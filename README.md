@@ -1,2 +1,2 @@
 # Raspi_YOLO
-yolov8 for raspberry pi 5
+yoloUI for raspberry pi 5
