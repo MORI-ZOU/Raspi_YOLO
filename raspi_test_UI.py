@@ -5,6 +5,7 @@ from raspi_camera import USBCamera
 from ultralytics import YOLO
 import tempfile
 import datetime
+import os
 
 def main():
     st.title("USB Camera YOLO Test")
@@ -15,6 +16,9 @@ def main():
         iou_threshold=st.slider("IOU", 0.0, 1.0, 0.5, 0.01)
         conf_threshold=st.slider("Confidence", 0.0, 1.0, 0.5, 0.01)
         is_submit = st.form_submit_button("submit")
+
+    if 'model' not in st.session_state:
+        st.session_state.model=None
 
     if uploaded_file is not None and is_submit:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pt") as tmp_file:
@@ -43,6 +47,32 @@ def main():
         results=st.session_state.model.predict(source=cv2_img, device='cpu',conf=conf_threshold, iou=iou_threshold, save=False)
         detected_img=results[0].plot(conf=False, labels=False)
         st.image(detected_img, channels="BGR", caption="detected image")
+
+        #save
+        save_dir=f"data/{datetime.datetime.now().strftime('')}"
+        os.makedirs(save_dir, exist_ok=True)
+        dt_now=datetime.datetime.now().strftime('%H%M%S')
+        output_path= os.path.join(save_dir,f"{dt_now}.jpg")
+        cv2.imwrite(output_path, cv2_img)
+
+        #save txt
+        for res in results:
+            #boxとクラスIDを取得する
+            boxes=res.boxes
+            classes=res.boxes.cls
+
+            #xywh形式でバウンディングボックスのデータを取得する
+            xywh=boxes.xywhn
+
+            with open(os.path.join(save_dir,f"{dt_now}.txt"), 'w') as f:
+                for i, box in enumerate(xywh):
+                    #バウンディングボックスの座標とクラスIDを書き込み
+                    class_id=classes[i]
+                    x,y,w,h=box
+                    f.write(f"{int(class_id)} {x} {y} {w} {h}\n")
+
+        st.write(f"検出画像を保存しました：{output_path}")
+        st.download_button(label="Download detected image", data=open(output_path, "rb").read(), file_name="detected_image.jpg", mime="image/jpeg")
    
 
 if __name__=="__main__":
